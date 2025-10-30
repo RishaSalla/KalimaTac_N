@@ -678,3 +678,17 @@ html[data-theme="dark"] .modal-close-btn:hover { background-color: rgba(255,255,
     .hint#answer-turn-hint { font-size: 1rem; margin-bottom: 1rem; } 
     #answer-buttons .btn { font-size: 1.1rem; padding: 0.7rem; }
 }
+/* --- تعديل خط نافذة الإجابة (حسب الخطة) --- */
+#modal-answer-content .modal-header h2,
+#modal-answer-content .modal-header h3 {
+    font-family: 'Tajawal', 'Reem Kufi', sans-serif;
+    font-weight: 700;
+}
+
+#modal-answer-content .modal-header h2 {
+    font-size: 4.5rem; /* (زيادة الحجم) */
+}
+
+#modal-answer-content .modal-header h3 {
+    font-size: 2.5rem; /* (زيادة الحجم) */
+}
