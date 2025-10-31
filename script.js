@@ -21,7 +21,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const timerSelectHome = $("#settings-timer-home"); 
     // (تمت إضافة العناصر الجديدة)
     const roundsSelectHome = $("#settings-rounds-home");
-    const extraCatsHome = $("#settings-extra-cats-home");
+    
+    // [تم التعديل] استبدال حقل الفئات النصي بالعناصر الجديدة
+    const inputCatsHome = $("#input-cats-home");
+    const chipContainerCatsHome = $("#chip-container-cats-home");
+
 
     const soundsToggleHome = $("#toggle-sounds-home");
     const themeToggleHome = $("#toggle-theme-home"); const themeToggleTextHome = $("#toggle-theme-text-home");
@@ -207,6 +211,71 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     }
+
+    // --- [4.6] إدارة شرائح الفئات (Category Chips) ---
+    // [تمت الإضافة] دوال جديدة لإدارة شرائح الفئات
+    
+    function createChipCategory(name) {
+        const chip = document.createElement('span');
+        chip.classList.add('chip');
+        chip.textContent = name;
+        
+        const removeBtn = document.createElement('span');
+        removeBtn.classList.add('chip-remove');
+        removeBtn.textContent = '×';
+        removeBtn.onclick = () => {
+            const index = state.settings.extraCats.indexOf(name);
+            if (index > -1) {
+                state.settings.extraCats.splice(index, 1);
+                renderChipsCategories(); // إعادة رسم شرائح الفئات
+                saveStateToLocalStorage();
+                if (state.settings.sounds) sounds.click();
+            }
+        };
+        
+        chip.appendChild(removeBtn);
+        return chip;
+    }
+
+    function renderChipsCategories() {
+        if (!chipContainerCatsHome) return;
+            
+        const inputEl = chipContainerCatsHome.querySelector('#input-cats-home');
+        chipContainerCatsHome.querySelectorAll('.chip').forEach(chip => chip.remove());
+        
+        state.settings.extraCats.forEach(name => {
+            if (inputEl) {
+                chipContainerCatsHome.insertBefore(createChipCategory(name), inputEl);
+            }
+        });
+        
+        if (document.activeElement === inputEl) {
+             inputEl.focus();
+        }
+    }
+
+    window.handleChipInputCategories = function(isButton = false, event = null) {
+        const inputEl = $("#input-cats-home");
+        if (!inputEl) return;
+        const name = inputEl.value.trim();
+
+        if (isButton || (event && (event.key === 'Enter' || event.type === 'blur'))) {
+            if (event) event.preventDefault();
+            
+            // التحقق من عدم التكرار (في الفئات المضافة أو الأساسية)
+            if (name && state.settings.extraCats.indexOf(name) === -1 && BASE_CATEGORIES.indexOf(name) === -1) {
+                state.settings.extraCats.push(name);
+                inputEl.value = '';
+                renderChipsCategories();
+                saveStateToLocalStorage();
+                if (inputEl) inputEl.focus();
+            } else if (name) {
+                inputEl.value = ''; // مسح الحقل إذا كانت الفئة مكررة
+            }
+        }
+    }
+    // [نهاية الإضافة]
+
     
     // --- [5] إدارة الحالة والواجهة (State & UI Management) ---
     function switchView(viewName) { appContainer.setAttribute("data-view", viewName); }
@@ -425,7 +494,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // (قراءة الإعدادات الجديدة من الشاشة الرئيسية)
         state.settings.secs = parseInt(timerSelectHome.value, 10); 
         state.match.totalRounds = parseInt(roundsSelectHome.value, 10);
-        state.settings.extraCats = extraCatsHome.value.split(",").map(cat => cat.trim()).filter(cat => cat.length > 0);
+        
+        // [تم الحذف] تم حذف السطر الخاص بـ extraCatsHome.value
+        // لأن الفئات أصبحت تُضاف مباشرة إلى state.settings.extraCats
         
         const activeModeBtn = document.querySelector('#mode-selector-wrapper .mode-btn.active');
         state.settings.playMode = activeModeBtn ? activeModeBtn.getAttribute('data-mode') : 'team';
@@ -650,7 +721,9 @@ document.addEventListener("DOMContentLoaded", () => {
         playerNameOInput.value = state.settings.playerNames.O;
         timerSelectHome.value = state.settings.secs;
         roundsSelectHome.value = state.match.totalRounds || 3;
-        extraCatsHome.value = state.settings.extraCats.join(", ");
+        
+        // [تم التعديل]
+        renderChipsCategories(); // (تحديث لعرض الفئات المحفوظة)
         
         applyTheme(); 
         updateSoundToggles(); 
@@ -807,6 +880,10 @@ document.addEventListener("DOMContentLoaded", () => {
            if (inputTeamXHome) inputTeamXHome.addEventListener('blur', (e) => window.handleChipInput(e, 'X', true, false));
            if (inputTeamOHome) inputTeamOHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInput(e, 'O', true, false); });
            if (inputTeamOHome) inputTeamOHome.addEventListener('blur', (e) => window.handleChipInput(e, 'O', true, false));
+
+           // [تمت الإضافة] ربط الأحداث لحقل الفئات الجديد
+           if (inputCatsHome) inputCatsHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInputCategories(false, e); });
+           if (inputCatsHome) inputCatsHome.addEventListener('blur', (e) => window.handleChipInputCategories(false, e));
            
            // (تم حذف المستمعات الخاصة بـ modal-settings)
     }
@@ -822,7 +899,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // (تحميل الإعدادات الجديدة إلى الشاشة الرئيسية)
             timerSelectHome.value = state.settings.secs; 
             roundsSelectHome.value = state.match.totalRounds || 3;
-            extraCatsHome.value = state.settings.extraCats.join(", ");
+            
+            // [تم الحذف] extraCatsHome.value = ...
             
             document.getElementById('mode-team-home').classList.toggle('active', state.settings.playMode === 'team');
             document.getElementById('mode-individual-home').classList.toggle('active', state.settings.playMode === 'individual');
@@ -833,10 +911,12 @@ document.addEventListener("DOMContentLoaded", () => {
             
             renderChips('X'); // (تم التبسيط)
             renderChips('O'); // (تم التبسيط)
+            renderChipsCategories(); // [تمت الإضافة]
             
         } else {
             document.getElementById('mode-team-home').classList.add('active'); 
             updatePlayerInputLabels(DEFAULT_STATE.settings.playMode);
+            renderChipsCategories(); // [تمت الإضافة]
         }
         
         applyTheme(); updateSoundToggles(); updatePlayerTags(); initEventListeners();
