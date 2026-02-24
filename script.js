@@ -2,13 +2,13 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     
-    // --- [1] تعريف العناصر (DOM Elements) ---
+    // --- [1] تعريف العناصر الأساسية (DOM Selectors) ---
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => document.querySelectorAll(selector);
     
     const appContainer = $("#app-container");
     
-    // عناصر الدخول
+    // عناصر نظام الدخول
     const accessCodeInput = $("#access-code");
     const rememberMeCheck = $("#remember-me");
     const loginBtn = $("#login-btn");
@@ -20,6 +20,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputTeamOHome = $("#input-team-o-home");
     const chipContainerXHome = $("#chip-container-x-home");
     const chipContainerOHome = $("#chip-container-o-home");
+    
+    const modeBtnTeamHome = $("#mode-team-home");
+    const modeBtnIndividualHome = $("#mode-individual-home");
     
     const timerSelectHome = $("#settings-timer-home"); 
     const roundsSelectHome = $("#settings-rounds-home");
@@ -53,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const gameBoard = $("#game-board"); 
     
-    // عناصر نافذة الإجابة
+    // نافذة الإجابة
     const modalAnswer = $("#modal-answer"); 
     const answerLetter = $("#answer-letter");
     const answerCategory = $("#answer-category"); 
@@ -73,6 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const confettiCanvas = $("#confetti-canvas");
     const confettiCtx = confettiCanvas.getContext("2d"); 
+    let confettiParticles = [];
+    
     const roundWinnerMessage = $("#round-winner-message");
     const playerXMemberDisplay = $("#player-x-member");
     const playerOMemberDisplay = $("#player-o-member");
@@ -94,7 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
         match: { 
             round: 1, 
             totalScore: { X: 0, O: 0 },
-            totalRounds: 3
+            totalRounds: 3,
+            usedCombinations: []
         }, 
         roundState: { 
             board: [], 
@@ -128,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
             const hashedInput = await hashSHA256(inputCode);
 
-            // التحقق من توافق الهاش مع valid_hashes في ملفك
             if (data.valid_hashes && data.valid_hashes.includes(hashedInput)) {
                 if (rememberMeCheck.checked) {
                     localStorage.setItem("kalimatac_auth", "true");
@@ -142,40 +147,45 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) {
             console.error("Auth failed:", e);
-            alert("خطأ: تعذر الوصول لملف الأكواد.");
+            alert("خطأ: تعذر الوصول لملف الأكواد المشفره.");
         }
     }
 
-    // --- [4] منطق الحروف الذكي (Smart Unique Logic) ---
-    function getUniqueCombination(excludeLetters = []) {
+    // --- [4] منطق الحروف الذكي (Unique Combination Logic) ---
+    function getNewCombination(excludeLetters = []) {
         const allCats = [...BASE_CATEGORIES, ...state.settings.extraCats];
         let attempts = 0;
         
         while (attempts < 200) {
             const letter = ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)];
             
-            // التأكد أن الحرف ليس موجوداً حالياً في أي خانة أخرى
+            // التأكد أن الحرف ليس موجوداً حالياً في القائمة الممنوعة (الموجودة على اللوحة)
             if (excludeLetters.includes(letter)) {
                 attempts++;
                 continue;
             }
             
-            let cats = [...allCats];
-            // استثناء لبعض الحروف
-            if (['ض', 'ظ'].includes(letter)) cats = cats.filter(c => c !== 'نبات');
+            let availableCats = [...new Set(allCats)];
+            // استثناء لبعض الحروف الصعبة
+            if (['ض', 'ظ'].includes(letter)) {
+                availableCats = availableCats.filter(cat => cat !== 'نبات');
+            }
             
-            const category = cats[Math.floor(Math.random() * cats.length)];
+            const category = availableCats[Math.floor(Math.random() * availableCats.length)];
             return { letter, category };
         }
+        // Fallback
         return { letter: ARABIC_LETTERS[0], category: allCats[0] }; 
     }
 
     function generateBoard() {
         state.roundState.board = [];
-        const currentLetters = [];
+        const currentLettersOnBoard = [];
+        
         for (let i = 0; i < 9; i++) {
-            const combo = getUniqueCombination(currentLetters);
-            currentLetters.push(combo.letter);
+            const combo = getNewCombination(currentLettersOnBoard);
+            currentLettersOnBoard.push(combo.letter); // إضافة الحرف للممنوعات في هذه اللوحة
+            
             state.roundState.board.push({ 
                 letter: combo.letter, 
                 category: combo.category, 
@@ -199,7 +209,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function initAudio() {
         if (!audioCtx && state.settings.sounds) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) { console.error("Audio API error", e); }
         }
     }
 
@@ -207,28 +219,34 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!state.settings.sounds) return;
         initAudio();
         if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const gNode = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
-        gNode.gain.setValueAtTime(gain, audioCtx.currentTime + delay);
-        gNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
-        osc.connect(gNode); gNode.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + delay); osc.stop(audioCtx.currentTime + delay + duration);
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+        gainNode.gain.setValueAtTime(gain, audioCtx.currentTime + delay);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+        oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+        oscillator.start(audioCtx.currentTime + delay); oscillator.stop(audioCtx.currentTime + delay + duration);
     }
 
     function runConfetti() {
+        if (!confettiCanvas) return;
+        confettiParticles = [];
         confettiCanvas.width = window.innerWidth;
         confettiCanvas.height = window.innerHeight;
-        let particles = Array.from({ length: 150 }, () => ({
-            x: Math.random() * confettiCanvas.width,
-            y: -20,
-            size: Math.random() * 8 + 4,
-            color: ["#60a5fa", "#34d399", "#fbbf24"][Math.floor(Math.random() * 3)],
-            vx: Math.random() * 4 - 2,
-            vy: Math.random() * 3 + 2,
-            angle: Math.random() * 6
-        }));
+        const colors = ["#60a5fa", "#34d399", "#fbbf24", "#f87171"];
+        
+        for (let i = 0; i < 150; i++) {
+            confettiParticles.push({
+                x: Math.random() * confettiCanvas.width,
+                y: -20,
+                size: Math.random() * 8 + 4,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                vx: Math.random() * 4 - 2,
+                vy: Math.random() * 3 + 2,
+                angle: Math.random() * 6
+            });
+        }
 
         let start = Date.now();
         function frame() {
@@ -237,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
             confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-            particles.forEach(p => {
+            confettiParticles.forEach(p => {
                 p.x += p.vx; p.y += p.vy; p.vy += 0.03;
                 confettiCtx.fillStyle = p.color;
                 confettiCtx.fillRect(p.x, p.y, p.size, p.size);
@@ -247,7 +265,7 @@ document.addEventListener("DOMContentLoaded", () => {
         frame();
     }
 
-    // --- [6] إدارة الجولات (Gameplay Logic) ---
+    // --- [6] إدارة الجولات واللعب (Game Logic) ---
     function startNewMatch() {
         initAudio();
         state.settings.secs = parseInt(timerSelectHome.value, 10);
@@ -263,6 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         initNewRound();
         updatePlayerTags();
         switchView("game");
+        if (state.settings.sounds) sounds.click();
     }
 
     function initNewRound(isRestart = false) {
@@ -289,14 +308,16 @@ document.addEventListener("DOMContentLoaded", () => {
         saveStateToLocalStorage();
     }
 
-    function onCellClick(i) {
+    function onCellClick(e) {
+        const cellIndex = parseInt(e.currentTarget.dataset.index, 10);
         if (!state.roundState.gameActive || state.roundState.phase !== null) return;
-        const cell = state.roundState.board[i];
+        
+        const cell = state.roundState.board[cellIndex];
         if (cell.owner) return;
 
-        sounds.click();
+        if (state.settings.sounds) sounds.click();
         stopTimer();
-        state.roundState.activeCell = i;
+        state.roundState.activeCell = cellIndex;
         state.roundState.phase = state.roundState.starter;
         cell.revealed = true;
         
@@ -317,10 +338,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const player = state.roundState.phase;
 
         if (isCorrect) {
-            sounds.success();
+            if (state.settings.sounds) sounds.success();
             cell.owner = player;
             cell.revealed = false;
             state.roundState.scores[player]++;
+            
             if (state.settings.playMode === 'team') advanceMember(player);
             
             state.roundState.starter = (player === "X") ? "O" : "X";
@@ -335,7 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 state.roundState.phase = null;
             }
         } else {
-            sounds.fail();
+            if (state.settings.sounds) sounds.fail();
             if (!cell.tried.has(player)) {
                 cell.tried.add(player);
                 state.roundState.phase = (player === "X") ? "O" : "X";
@@ -344,12 +366,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 startAnswerTimer();
                 return;
             } else {
-                // فشل الطرفان: سحب حرف جديد ليس موجوداً على اللوحة
-                const allLettersOnBoard = state.roundState.board.map(c => c.letter);
-                const newCombo = getUniqueCombination(allLettersOnBoard);
+                // فشل الطرفان: تبديل الحرف بحرف جديد تماماً غير موجود على اللوحة الحالية
+                const allCurrentLetters = state.roundState.board.map(c => c.letter);
+                const combo = getNewCombination(allCurrentLetters);
                 
-                cell.letter = newCombo.letter;
-                cell.category = newCombo.category;
+                cell.letter = combo.letter;
+                cell.category = combo.category;
                 cell.revealed = false;
                 cell.tried.clear();
                 
@@ -381,12 +403,12 @@ document.addEventListener("DOMContentLoaded", () => {
             state.roundState.winInfo = { winner, line };
             roundWinnerMessage.textContent = `الفائز بالجولة: ${state.settings.playerNames[winner]}!`;
             roundWinnerMessage.style.display = 'block';
-            sounds.win();
+            if (state.settings.sounds) sounds.win();
             setTimeout(runConfetti, 500);
         } else {
             roundWinnerMessage.textContent = "تعادل!";
             roundWinnerMessage.style.display = 'block';
-            sounds.draw();
+            if (state.settings.sounds) sounds.draw();
         }
 
         const winGoal = Math.ceil(state.match.totalRounds / 2);
@@ -400,7 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
         saveStateToLocalStorage();
     }
 
-    // --- [7] وظائف الواجهة (UI & Rendering) ---
+    // --- [7] وظائف الواجهة (UI Rendering) ---
     function switchView(view) { appContainer.setAttribute("data-view", view); }
     
     function toggleModal(id) { 
@@ -416,6 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.roundState.board.forEach((cell, i) => {
             const cellEl = document.createElement('div');
             cellEl.className = `board-cell ${cell.owner ? 'owned player-' + cell.owner.toLowerCase() : ''} ${cell.revealed ? 'revealed' : ''}`;
+            cellEl.dataset.index = i;
             
             const letterEl = document.createElement('span');
             letterEl.className = 'cell-letter';
@@ -426,7 +449,7 @@ document.addEventListener("DOMContentLoaded", () => {
             catEl.textContent = cell.owner ? '' : cell.category;
             
             cellEl.append(letterEl, catEl);
-            cellEl.onclick = () => onCellClick(i);
+            cellEl.onclick = onCellClick;
             gameBoard.appendChild(cellEl);
         });
         if (state.roundState.winInfo) drawWinLine(state.roundState.winInfo.line);
@@ -436,15 +459,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const turn = state.roundState.phase || state.roundState.starter;
         const isTeam = state.settings.playMode === 'team';
         const members = state.settings.teamMembers[turn];
-        const memberName = isTeam && members.length > 0 ? members[state.roundState.teamMemberIndex[turn]] : "";
+        const memberName = (isTeam && members.length > 0) ? members[state.roundState.teamMemberIndex[turn]] : "";
         
         timerText.textContent = memberName ? `دور ${state.settings.playerNames[turn]} (${memberName})` : `دور ${state.settings.playerNames[turn]}`;
         playerTagX.classList.toggle("active", turn === "X");
         playerTagO.classList.toggle("active", turn === "O");
 
         if (isTeam) {
-            playerXMemberDisplay.textContent = members && turn === "X" ? `(${memberName})` : "";
-            playerOMemberDisplay.textContent = members && turn === "O" ? `(${memberName})` : "";
+            playerXMemberDisplay.textContent = (members && turn === "X") ? `(${memberName})` : "";
+            playerOMemberDisplay.textContent = (members && turn === "O") ? `(${memberName})` : "";
         }
     }
 
@@ -469,7 +492,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const rS = s.getBoundingClientRect(), rE = e.getBoundingClientRect(), bRect = gameBoard.getBoundingClientRect();
         const x1 = rS.left + rS.width/2 - bRect.left, y1 = rS.top + rS.height/2 - bRect.top;
         const x2 = rE.left + rE.width/2 - bRect.left, y2 = rE.top + rE.height/2 - bRect.top;
-        const dist = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+        const dist = Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(y2-y1, 2));
         lineEl.style.width = `${dist}px`;
         lineEl.style.left = `${x1}px`;
         lineEl.style.top = `${y1}px`;
@@ -477,7 +500,7 @@ document.addEventListener("DOMContentLoaded", () => {
         gameBoard.appendChild(lineEl);
     }
 
-    // --- [8] إدارة المؤقت والحفظ ---
+    // --- [8] إدارة المؤقت والحفظ (Timer & Persistence) ---
     function startAnswerTimer() {
         stopTimer();
         const dur = state.settings.secs * 1000;
@@ -485,12 +508,21 @@ document.addEventListener("DOMContentLoaded", () => {
         answerTimerBar.style.setProperty('--timer-duration', `${state.settings.secs}s`);
         answerTimerBar.classList.add("animating");
         state.timer.intervalId = setInterval(() => {
-            if (Date.now() >= state.timer.deadline) handleAnswer(false);
+            const rem = state.timer.deadline - Date.now();
+            if (rem <= 0) {
+                stopTimer();
+                handleAnswer(false);
+            } else if (rem <= 3000 && (rem % 1000 < 100)) {
+                if (state.settings.sounds) sounds.timerTick();
+            }
         }, 100);
     }
 
     function stopTimer() { 
-        clearInterval(state.timer.intervalId); 
+        if (state.timer.intervalId) {
+            clearInterval(state.timer.intervalId);
+            state.timer.intervalId = null;
+        }
         answerTimerBar.classList.remove("animating"); 
     }
 
@@ -498,16 +530,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const copy = JSON.parse(JSON.stringify(state));
         copy.timer = { intervalId: null, deadline: 0 };
         copy.roundState.board.forEach(c => c.tried = Array.from(c.tried));
-        localStorage.setItem("kalimatac_state", JSON.stringify(copy));
+        localStorage.setItem("ticTacCategoriesGameState", JSON.stringify(copy));
     }
 
     function loadState() {
-        const saved = localStorage.getItem("kalimatac_state");
+        const saved = localStorage.getItem("ticTacCategoriesGameState");
         if (saved) {
-            const data = JSON.parse(saved);
-            data.roundState.board.forEach(c => c.tried = new Set(c.tried));
-            state = data;
-            return true;
+            try {
+                const data = JSON.parse(saved);
+                data.roundState.board.forEach(c => c.tried = new Set(c.tried || []));
+                state = data;
+                return true;
+            } catch (e) { localStorage.removeItem("ticTacCategoriesGameState"); }
         }
         return false;
     }
@@ -530,7 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     window.handleChipInput = function(e, team, ignore, isBtn) {
-        const input = isBtn ? $(`#input-team-${team.toLowerCase()}-home`) : e.target;
+        const input = isBtn ? document.getElementById(`input-team-${team.toLowerCase()}-home`) : e.target;
         const val = input.value.trim();
         if ((isBtn || e.key === 'Enter') && val) {
             if (!state.settings.teamMembers[team].includes(val)) {
@@ -555,18 +589,25 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!chipContainerCatsHome) return;
         const input = $("#input-cats-home");
         chipContainerCatsHome.querySelectorAll('.chip').forEach(c => c.remove());
-        state.settings.extraCats.forEach(cat => {
-            const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = cat;
+        state.settings.extraCats.forEach(name => {
+            const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = name;
             const rm = document.createElement('span'); rm.className = 'chip-remove'; rm.textContent = '×';
             rm.onclick = () => {
-                state.settings.extraCats = state.settings.extraCats.filter(c => c !== cat);
+                state.settings.extraCats = state.settings.extraCats.filter(c => c !== name);
                 renderChipsCategories(); saveStateToLocalStorage();
             };
             chip.appendChild(rm); chipContainerCatsHome.insertBefore(chip, input);
         });
     }
 
-    // --- [10] بدء التشغيل (Initialization) ---
+    window.togglePlayMode = function(ignore, mode) {
+        state.settings.playMode = mode;
+        $$('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        $$('.team-members-group').forEach(g => g.style.display = (mode === 'team' ? 'flex' : 'none'));
+        saveStateToLocalStorage();
+    }
+
+    // --- [10] الربط والتشغيل (Initialization) ---
     function init() {
         loginBtn.onclick = handleLogin;
         startGameBtn.onclick = startNewMatch;
@@ -574,8 +615,15 @@ document.addEventListener("DOMContentLoaded", () => {
         themeToggleHome.onclick = themeToggleGame.onclick = () => {
             state.settings.theme = state.settings.theme === "light" ? "dark" : "light";
             document.documentElement.setAttribute("data-theme", state.settings.theme);
-            const text = state.settings.theme === "dark" ? "ثيم فاتح" : "ثيم غامق";
-            themeToggleTextHome.textContent = themeToggleTextGame.textContent = text;
+            const txt = state.settings.theme === "dark" ? "ثيم فاتح" : "ثيم غامق";
+            themeToggleTextHome.textContent = themeToggleTextGame.textContent = txt;
+            saveStateToLocalStorage();
+        };
+
+        soundsToggleHome.onclick = () => {
+            state.settings.sounds = !state.settings.sounds;
+            soundsToggleHome.setAttribute("data-active", state.settings.sounds);
+            soundsToggleHome.querySelector(".switch-text").textContent = state.settings.sounds ? "مفعلة" : "معطلة";
             saveStateToLocalStorage();
         };
 
@@ -585,16 +633,16 @@ document.addEventListener("DOMContentLoaded", () => {
         restartRoundBtn.onclick = () => toggleModal("modal-confirm-restart");
         confirmRestartBtn.onclick = () => { toggleModal(null); initNewRound(true); };
         endMatchBtn.onclick = () => toggleModal("modal-final-score");
-        newMatchBtn.onclick = () => { localStorage.removeItem("kalimatac_state"); location.reload(); };
-        backToHomeBtn.onclick = () => { switchView("home"); resumeGameBtn.style.display = "none"; };
+        newMatchBtn.onclick = () => { localStorage.removeItem("ticTacCategoriesGameState"); location.reload(); };
+        backToHomeBtn.onclick = () => switchView("home");
         
         instructionsBtnHome.onclick = instructionsBtnGame.onclick = () => toggleModal("modal-instructions");
         modalCloseBtns.forEach(b => b.onclick = () => toggleModal(null));
 
-        // التحقق من الدخول المحفوظ
+        // نظام الدخول
         if (localStorage.getItem("kalimatac_auth") === "true") switchView("home");
 
-        // استرجاع حالة اللعبة والإعدادات
+        // استرجاع الحالة
         if (loadState()) {
             resumeGameBtn.style.display = "inline-flex";
             resumeGameBtn.onclick = () => { renderBoard(); updateScoreboard(); updateTurnUI(); switchView("game"); };
