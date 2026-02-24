@@ -2,13 +2,13 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     
-    // --- [1] تعريف العناصر الأساسية (DOM Selectors) ---
+    // --- [1] تعريف العناصر الأساسية (DOM Elements) ---
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => document.querySelectorAll(selector);
     
     const appContainer = $("#app-container");
     
-    // عناصر نظام الدخول
+    // عناصر نظام الدخول الجديد
     const accessCodeInput = $("#access-code");
     const rememberMeCheck = $("#remember-me");
     const loginBtn = $("#login-btn");
@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const gameBoard = $("#game-board"); 
     
-    // نافذة الإجابة
+    // عناصر نافذة الإجابة
     const modalAnswer = $("#modal-answer"); 
     const answerLetter = $("#answer-letter");
     const answerCategory = $("#answer-category"); 
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     let state = JSON.parse(JSON.stringify(DEFAULT_STATE)); 
 
-    // --- [3] نظام الدخول والتحقق (Auth Logic) ---
+    // --- [3] نظام الدخول والتحقق (Auth Security) ---
     async function hashSHA256(str) {
         const utf8 = new TextEncoder().encode(str);
         const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
@@ -134,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
             const hashedInput = await hashSHA256(inputCode);
 
+            // التحقق من valid_hashes كما في ملفك الـ JSON
             if (data.valid_hashes && data.valid_hashes.includes(hashedInput)) {
                 if (rememberMeCheck.checked) {
                     localStorage.setItem("kalimatac_auth", "true");
@@ -146,27 +147,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (state.settings.sounds) sounds.fail();
             }
         } catch (e) {
-            console.error("Auth failed:", e);
-            alert("خطأ: تعذر الوصول لملف الأكواد المشفره.");
+            console.error("Auth Fetch Error:", e);
+            alert("فشل التحقق: تأكد من ملف الأكواد.");
         }
     }
 
-    // --- [4] منطق الحروف الذكي (Unique Combination Logic) ---
+    // --- [4] منطق الحروف الذكي (Smart Unique Logic) ---
     function getNewCombination(excludeLetters = []) {
         const allCats = [...BASE_CATEGORIES, ...state.settings.extraCats];
         let attempts = 0;
         
-        while (attempts < 200) {
+        while (attempts < 250) {
             const letter = ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)];
             
-            // التأكد أن الحرف ليس موجوداً حالياً في القائمة الممنوعة (الموجودة على اللوحة)
+            // التحقق من عدم وجود الحرف مسبقاً على اللوحة
             if (excludeLetters.includes(letter)) {
                 attempts++;
                 continue;
             }
             
             let availableCats = [...new Set(allCats)];
-            // استثناء لبعض الحروف الصعبة
             if (['ض', 'ظ'].includes(letter)) {
                 availableCats = availableCats.filter(cat => cat !== 'نبات');
             }
@@ -174,17 +174,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const category = availableCats[Math.floor(Math.random() * availableCats.length)];
             return { letter, category };
         }
-        // Fallback
         return { letter: ARABIC_LETTERS[0], category: allCats[0] }; 
     }
 
     function generateBoard() {
         state.roundState.board = [];
-        const currentLettersOnBoard = [];
+        const usedInThisBoard = [];
         
         for (let i = 0; i < 9; i++) {
-            const combo = getNewCombination(currentLettersOnBoard);
-            currentLettersOnBoard.push(combo.letter); // إضافة الحرف للممنوعات في هذه اللوحة
+            const combo = getNewCombination(usedInThisBoard);
+            usedInThisBoard.push(combo.letter); // تتبع الحروف لضمان عدم تكرار الـ 9 حروف
             
             state.roundState.board.push({ 
                 letter: combo.letter, 
@@ -211,7 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!audioCtx && state.settings.sounds) {
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            } catch (e) { console.error("Audio API error", e); }
+            } catch (e) { console.error("Audio Context Init Error", e); }
         }
     }
 
@@ -235,7 +234,6 @@ document.addEventListener("DOMContentLoaded", () => {
         confettiCanvas.width = window.innerWidth;
         confettiCanvas.height = window.innerHeight;
         const colors = ["#60a5fa", "#34d399", "#fbbf24", "#f87171"];
-        
         for (let i = 0; i < 150; i++) {
             confettiParticles.push({
                 x: Math.random() * confettiCanvas.width,
@@ -247,13 +245,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 angle: Math.random() * 6
             });
         }
-
         let start = Date.now();
         function frame() {
-            if (Date.now() - start > 3000) {
-                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-                return;
-            }
+            if (Date.now() - start > 3000) { confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); return; }
             confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
             confettiParticles.forEach(p => {
                 p.x += p.vx; p.y += p.vy; p.vy += 0.03;
@@ -265,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
         frame();
     }
 
-    // --- [6] إدارة الجولات واللعب (Game Logic) ---
+    // --- [6] إدارة الجولات (Gameplay Core) ---
     function startNewMatch() {
         initAudio();
         state.settings.secs = parseInt(timerSelectHome.value, 10);
@@ -342,7 +336,6 @@ document.addEventListener("DOMContentLoaded", () => {
             cell.owner = player;
             cell.revealed = false;
             state.roundState.scores[player]++;
-            
             if (state.settings.playMode === 'team') advanceMember(player);
             
             state.roundState.starter = (player === "X") ? "O" : "X";
@@ -366,9 +359,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 startAnswerTimer();
                 return;
             } else {
-                // فشل الطرفان: تبديل الحرف بحرف جديد تماماً غير موجود على اللوحة الحالية
-                const allCurrentLetters = state.roundState.board.map(c => c.letter);
-                const combo = getNewCombination(allCurrentLetters);
+                // فشل الطرفان: سحب حرف جديد كلياً ليس موجوداً على اللوحة
+                const boardLetters = state.roundState.board.map(c => c.letter);
+                const combo = getNewCombination(boardLetters);
                 
                 cell.letter = combo.letter;
                 cell.category = combo.category;
@@ -607,6 +600,14 @@ document.addEventListener("DOMContentLoaded", () => {
         saveStateToLocalStorage();
     }
 
+    function applyTheme() {
+        const theme = state.settings.theme;
+        document.documentElement.setAttribute("data-theme", theme);
+        const text = (theme === "dark") ? "ثيم فاتح" : "ثيم غامق";
+        if (themeToggleTextHome) themeToggleTextHome.textContent = text;
+        if (themeToggleTextGame) themeToggleTextGame.textContent = text;
+    }
+
     // --- [10] الربط والتشغيل (Initialization) ---
     function init() {
         loginBtn.onclick = handleLogin;
@@ -614,9 +615,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         themeToggleHome.onclick = themeToggleGame.onclick = () => {
             state.settings.theme = state.settings.theme === "light" ? "dark" : "light";
-            document.documentElement.setAttribute("data-theme", state.settings.theme);
-            const txt = state.settings.theme === "dark" ? "ثيم فاتح" : "ثيم غامق";
-            themeToggleTextHome.textContent = themeToggleTextGame.textContent = txt;
+            applyTheme();
             saveStateToLocalStorage();
         };
 
@@ -653,7 +652,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         renderChips('X'); renderChips('O'); renderChipsCategories();
-        document.documentElement.setAttribute("data-theme", state.settings.theme);
+        applyTheme();
     }
 
     init();
