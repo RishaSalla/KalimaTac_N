@@ -98,3 +98,68 @@ function runConfetti() {
      } 
      animateConfetti();
 }
+
+// --- [9] ربط الأحداث (Event Listeners) ---
+function initEventListeners() { 
+       startGameBtn.addEventListener("click", startNewMatch); 
+       resumeGameBtn.addEventListener("click", resumeGame); 
+       themeToggleHome.addEventListener("click", toggleTheme); 
+       soundsToggleHome.addEventListener("click", toggleSounds); 
+       instructionsBtnHome.addEventListener("click", () => { initAudio(); if (state.settings.sounds) sounds.click(); toggleModal("modal-instructions"); }); 
+       themeToggleGame.addEventListener("click", toggleTheme); 
+       
+       instructionsBtnGame.addEventListener("click", () => { if (state.settings.sounds) sounds.click(); toggleModal("modal-instructions"); }); 
+       newRoundBtn.addEventListener("click", () => { if (state.settings.sounds) sounds.click(); initNewRound(false); }); 
+       restartRoundBtn.addEventListener("click", () => { if (state.settings.sounds) sounds.fail(); toggleModal("modal-confirm-restart"); }); 
+       endMatchBtn.addEventListener("click", () => { if (state.settings.sounds) sounds.fail(); toggleModal("modal-final-score"); }); 
+       answerCorrectBtn.addEventListener("click", () => handleAnswer(true)); 
+       answerWrongBtn.addEventListener("click", () => handleAnswer(false)); 
+       
+       newMatchBtn.addEventListener("click", endMatchAndStartNew); 
+       
+       if (backToHomeBtn) {
+            backToHomeBtn.addEventListener("click", backToHomeWithSave);
+       }
+       
+       confirmRestartBtn.addEventListener("click", () => { toggleModal(null); if (state.settings.sounds) sounds.click(); initNewRound(true); }); 
+       modalCloseBtns.forEach(btn => { btn.addEventListener("click", (e) => { const modalId = e.currentTarget.dataset.modal; if (modalId) { toggleModal(null); if (state.settings.sounds) sounds.click(); } }); }); 
+       $$(".modal-overlay").forEach(modal => { modal.addEventListener("click", (e) => { if (e.target === modal) { if (modal.id !== 'modal-answer') { toggleModal(null); if (state.settings.sounds) sounds.click(); } } }); });
+       
+       if (inputTeamXHome) inputTeamXHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInput(e, 'X', true, false); });
+       if (inputTeamXHome) inputTeamXHome.addEventListener('blur', (e) => window.handleChipInput(e, 'X', true, false));
+       if (inputTeamOHome) inputTeamOHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInput(e, 'O', true, false); });
+       if (inputTeamOHome) inputTeamOHome.addEventListener('blur', (e) => window.handleChipInput(e, 'O', true, false));
+
+       if (inputCatsHome) inputCatsHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInputCategories(false, e); });
+       if (inputCatsHome) inputCatsHome.addEventListener('blur', (e) => window.handleChipInputCategories(false, e));
+}
+
+// --- [10] بدء تشغيل اللعبة ---
+function initializeGame() { 
+    if (loadStateFromLocalStorage()) { 
+        resumeGameBtn.style.display = "inline-flex"; 
+        playerNameXInput.value = state.settings.playerNames.X; 
+        playerNameOInput.value = state.settings.playerNames.O; 
+        
+        timerSelectHome.value = state.settings.secs; 
+        roundsSelectHome.value = state.match.totalRounds || 3;
+        
+        document.getElementById('mode-team-home').classList.toggle('active', state.settings.playMode === 'team');
+        document.getElementById('mode-individual-home').classList.toggle('active', state.settings.playMode === 'individual');
+
+        updatePlayerInputLabels(state.settings.playMode);
+        
+        renderChips('X'); 
+        renderChips('O'); 
+        renderChipsCategories(); 
+        
+    } else {
+        document.getElementById('mode-team-home').classList.add('active'); 
+        updatePlayerInputLabels(DEFAULT_STATE.settings.playMode);
+        renderChipsCategories(); 
+    }
+    
+    applyTheme(); updateSoundToggles(); updatePlayerTags(); initEventListeners();
+}
+
+initializeGame();
