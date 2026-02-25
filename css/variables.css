@@ -29,7 +29,7 @@
     --player-o-bg: transparent;
     
     /* ألوان الخلفية الإبداعية */
-    --bg-pattern-color: rgba(96, 165, 250, 0.05); /* أزرق فاتح جداً */
+    --bg-pattern-color: rgba(96, 165, 250, 0.05);
 }
 
 /* --- [1] الثيم الغامق --- */
@@ -49,6 +49,5 @@ html[data-theme="dark"] {
     --nm-shadow-light-inset: inset -4px -4px 8px rgba(55, 65, 81, 0.6);
     --nm-shadow-dark-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.4);
     
-    /* ألوان الخلفية الإبداعية */
-    --bg-pattern-color: rgba(147, 197, 253, 0.03); /* شفاف أفتح في الغامق */
+    --bg-pattern-color: rgba(147, 197, 253, 0.03);
 }
