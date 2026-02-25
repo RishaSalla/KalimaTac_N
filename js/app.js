@@ -1,6 +1,6 @@
 "use strict";
 
-// --- [1] تعريف العناصر الأساسية (Selectors) ---
+// --- [1] تعريف العناصر الأساسية ---
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
 
@@ -57,7 +57,7 @@ const modalConfirmRestart = $("#modal-confirm-restart");
 const confirmRestartBtn = $("#confirm-restart-btn");
 const modalCloseBtns = $$(".modal-close-btn"); 
 const confettiCanvas = $("#confetti-canvas");
-const confettiCtx = confettiCanvas.getContext("2d"); 
+const confettiCtx = (confettiCanvas ? confettiCanvas.getContext("2d") : null); 
 let confettiParticles = [];
 const roundWinnerMessage = $("#round-winner-message");
 const playerXMemberDisplay = $("#player-x-member");
@@ -83,36 +83,28 @@ const DEFAULT_STATE = {
         usedCombinations: []
     }, 
     roundState: { 
-        board: [], 
-        scores: { X: 0, O: 0 }, 
-        starter: "X", 
-        phase: null, 
-        activeCell: null, 
-        gameActive: true, 
-        winInfo: null, 
+        board: [], scores: { X: 0, O: 0 }, 
+        starter: "X", phase: null, 
+        activeCell: null, gameActive: true, winInfo: null,
         teamMemberIndex: { X: 0, O: 0 } 
     },
     timer: { intervalId: null, deadline: 0 }
 };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE)); 
 
-// --- [8] الحفظ والاستئناف (Persistence) ---
+// --- [8] الحفظ والاستئناف ---
 function saveStateToLocalStorage() { 
     const stateToSave = JSON.parse(JSON.stringify(state)); 
     stateToSave.timer = DEFAULT_STATE.timer; 
     stateToSave.roundState.activeCell = null; 
     stateToSave.roundState.phase = null; 
-    stateToSave.roundState.teamMemberIndex = state.roundState.teamMemberIndex;
-
+    
     if (state.match.usedCombinations) {
         stateToSave.match.usedCombinations = Array.from(state.match.usedCombinations);
-    } else {
-        stateToSave.match.usedCombinations = [];
     }
     
     stateToSave.roundState.board.forEach(cell => { 
         if (cell.tried instanceof Set) { cell.tried = Array.from(cell.tried); } 
-        else { cell.tried = []; } 
     }); 
     localStorage.setItem("ticTacCategoriesGameState", JSON.stringify(stateToSave));
 }
@@ -123,24 +115,13 @@ function loadStateFromLocalStorage() {
         try { 
             const loadedState = JSON.parse(savedState); 
             const mergedState = JSON.parse(JSON.stringify(DEFAULT_STATE)); 
-            
-            mergedState.settings.playMode = loadedState.settings.playMode || DEFAULT_STATE.settings.playMode;
-            mergedState.settings.teamMembers = loadedState.settings.teamMembers || DEFAULT_STATE.settings.teamMembers;
-            
             Object.assign(mergedState.settings, loadedState.settings); 
             Object.assign(mergedState.match, loadedState.match); 
             Object.assign(mergedState.roundState, loadedState.roundState); 
             
-            mergedState.match.usedCombinations = loadedState.match.usedCombinations || [];
             mergedState.roundState.board.forEach(cell => { cell.tried = new Set(cell.tried || []); }); 
-            mergedState.roundState.teamMemberIndex = loadedState.roundState.teamMemberIndex || DEFAULT_STATE.roundState.teamMemberIndex; 
-            
-            if (!mergedState.match.totalScore) { 
-                 mergedState.match.totalScore = { X: 0, O: 0 }; 
-            } 
             state = mergedState; return true; 
         } catch (e) { 
-            console.error("Failed to parse saved state:", e); 
             localStorage.removeItem("ticTacCategoriesGameState"); 
             return false; 
         } 
