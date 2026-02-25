@@ -15,7 +15,7 @@ function createChip(name, team) {
             renderChips('X'); 
             renderChips('O'); 
             saveStateToLocalStorage();
-            if (state.settings.sounds) sounds.click();
+            if (state.settings.sounds && sounds.click) sounds.click();
         }
     };
     
@@ -25,7 +25,6 @@ function createChip(name, team) {
 
 function renderChips(team) {
     const container = (team === 'X' ? chipContainerXHome : chipContainerOHome);
-        
     if (!container) return;
         
     const inputId = `input-team-${team.toLowerCase()}-home`;
@@ -38,28 +37,25 @@ function renderChips(team) {
             container.insertBefore(createChip(name, team), inputEl);
         }
     });
-    
-    if (document.activeElement === inputEl) {
-         inputEl.focus();
-    }
 }
 
+// ربطها بـ window لتعمل من الـ HTML (onclick)
 window.handleChipInput = function(event, team, isHome_ignored, isButton = false) {
     const inputEl = isButton ? document.getElementById(`input-team-${team.toLowerCase()}-home`) : event.target;
-    
     if (!inputEl) return; 
     
     const name = inputEl.value.trim();
 
     if (isButton || event.key === 'Enter' || event.type === 'blur') {
-        if (event) event.preventDefault();
+        if (event && typeof event.preventDefault === "function") event.preventDefault();
+        
         if (name && state.settings.teamMembers[team].indexOf(name) === -1) {
             state.settings.teamMembers[team].push(name);
             inputEl.value = ''; 
             renderChips('X'); 
             renderChips('O'); 
             saveStateToLocalStorage();
-            if (inputEl) inputEl.focus(); 
+            inputEl.focus(); 
         } else if (name) {
              inputEl.value = ''; 
         }
@@ -82,7 +78,7 @@ function createChipCategory(name) {
             state.settings.extraCats.splice(index, 1);
             renderChipsCategories(); 
             saveStateToLocalStorage();
-            if (state.settings.sounds) sounds.click();
+            if (state.settings.sounds && sounds.click) sounds.click();
         }
     };
     
@@ -92,35 +88,31 @@ function createChipCategory(name) {
 
 function renderChipsCategories() {
     if (!chipContainerCatsHome) return;
-        
     const inputEl = chipContainerCatsHome.querySelector('#input-cats-home');
-    chipContainerCatsHome.querySelectorAll('.chip').forEach(chip => chip.remove());
     
+    chipContainerCatsHome.querySelectorAll('.chip').forEach(chip => chip.remove());
     state.settings.extraCats.forEach(name => {
         if (inputEl) {
             chipContainerCatsHome.insertBefore(createChipCategory(name), inputEl);
         }
     });
-    
-    if (document.activeElement === inputEl) {
-         inputEl.focus();
-    }
 }
 
+// ربطها بـ window لتعمل من الـ HTML (onclick)
 window.handleChipInputCategories = function(isButton = false, event = null) {
     const inputEl = $("#input-cats-home");
     if (!inputEl) return;
     const name = inputEl.value.trim();
 
     if (isButton || (event && (event.key === 'Enter' || event.type === 'blur'))) {
-        if (event) event.preventDefault();
+        if (event && typeof event.preventDefault === "function") event.preventDefault();
         
         if (name && state.settings.extraCats.indexOf(name) === -1 && BASE_CATEGORIES.indexOf(name) === -1) {
             state.settings.extraCats.push(name);
             inputEl.value = '';
             renderChipsCategories();
             saveStateToLocalStorage();
-            if (inputEl) inputEl.focus();
+            inputEl.focus();
         } else if (name) {
             inputEl.value = ''; 
         }
@@ -133,7 +125,5 @@ function advanceTeamMember(player) {
         let currentIndex = state.roundState.teamMemberIndex[player];
         currentIndex = (currentIndex + 1) % members.length;
         state.roundState.teamMemberIndex[player] = currentIndex;
-    } else {
-        state.roundState.teamMemberIndex[player] = 0;
     }
 }
