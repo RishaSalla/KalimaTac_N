@@ -1,1 +1,152 @@
+/* --- [2] الإعدادات العامة (Reset) --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+    font-family: var(--font-family-ui); background-color: var(--bg-color); color: var(--text-color);
+    line-height: 1.6; transition: background-color 0.4s, color 0.4s; 
+    overflow-x: hidden; 
+    overflow-y: auto; 
+    position: relative; 
+    min-height: 100vh;
+}
 
+/* تأثير الضوضاء الخفيف للخلفية */
+body::before {
+     content: ""; position: fixed; top: -50%; left: -50%; right: -50%; bottom: -50%;
+     width: 200%; height: 200%; z-index: -1;
+     background: transparent url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCI+CiAgPGZpbHRlciBpZD0iYSIgZmlsdGVyVW5pdHM9Im9iamVjdEJvdW5kaW5nQm94IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBjb2xvci1pbnRlcnBvbGF0aW9uLWZpbHRlcnM9InNSR0IiPgogICAgPGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9Ii42NSIgbnVtT2N0YXZlcz0iNCIgc3RpdGNoVGlsZXM9InN0aXRjaCIgcmVzdWx0PSJ0dXJidWxlbmNlIi8+CiAgICA8ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmFhdGUiIHZhbHVlcz0iMCIvPgogICAgPGZlRGlmZnVzZUxpZ2h0aW5nIHN1cmZhY2VTY2FsZT0iLjIiIGxpZ2h0aW5nQ29sb3I9IiNmZmZmZmYiIHJlc3VsdD0ibGlnaHQiPgogICAgICAgIDxmZURpc3RhbnRMaWdodCBhemltdXRoPSIyMzUiIGVsZXZhdGlvbj0iNzUiLz4KICAgIDwvZmVEaWZmdXNlTGlnaHRpbmc+CiAgICA8ZmVDb21wb3NpdGUgaW49InR1cmJ1bGVuY2UiIGluMj0ibGlnaHQiIG9wZXJhdG9yPSJhcml0aG1ldGljIiBrMT0iMS41IiBrMj0iMCIgazM9IjAiIGs0PSIwIi8+CiAgICA8ZmVDb21wb3NpdGUgaW49InR1cmJ1bGVuY2UiIGluMj0ibGlnaHQiIG9wZXJhdG9yPSJpbiIvPgogIDwvZmlsdGVyPgogIDxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNhKSIgb3BhY2l0eT0iLjA2Ii8+Cjwvc3ZnPg==');
+     animation: noiseAnim 5s steps(10) infinite;
+     opacity: 0.7;
+}
+html[data-theme="dark"] body::before { opacity: 0.4; }
+@keyframes noiseAnim { 0% { transform: translate(0,0); } 10% { transform: translate(-5%,-5%); } 20% { transform: translate(-10%,5%); } 30% { transform: translate(5%,-10%); } 40% { transform: translate(-5%,15%); } 50% { transform: translate(-10%,5%); } 60% { transform: translate(15%,0); } 70% { transform: translate(0,10%); } 80% { transform: translate(-15%,0); } 90% { transform: translate(10%,5%); } 100% { transform: translate(5%,0); } }
+
+/* خلفية Ghost Grid Pattern */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: -2;
+    pointer-events: none;
+    opacity: 1;
+    background: 
+        radial-gradient(circle at 10% 20%, var(--bg-pattern-color), transparent 20%),
+        radial-gradient(circle at 80% 90%, var(--bg-pattern-color), transparent 20%),
+        radial-gradient(circle at 50% 50%, var(--bg-pattern-color), transparent 20%),
+        radial-gradient(circle at 30% 70%, var(--bg-pattern-color), transparent 18%),
+        radial-gradient(circle at 60% 10%, var(--bg-pattern-color), transparent 18%),
+        linear-gradient(to right, var(--bg-pattern-color), transparent),
+        linear-gradient(to bottom, var(--bg-pattern-color), transparent);
+    background-repeat: repeat;
+    background-size: 500px 500px;
+    background-position: var(--bg-position-x, 0%) var(--bg-position-y, 0%);
+    animation: patternMovement 100s linear infinite alternate;
+}
+
+@keyframes patternMovement {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+}
+
+h1, h2, h3 { font-family: var(--font-family-display); font-weight: 600; margin-bottom: 0.75rem; }
+p { margin-bottom: 1rem; color: var(--text-color-muted); }
+
+/* --- [4] حاوي التطبيق الرئيسي --- */
+#app-container { 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    min-height: 100vh; 
+    padding: 1rem; 
+} 
+
+.content-wrapper {
+     max-width: 100%;
+     display: flex;
+     justify-content: center;
+     align-items: center;
+     width: 100%;
+}
+
+/* --- [5] نظام الشاشات (Views) --- */
+.screen { 
+    display: none; width: 100%; max-width: 550px; 
+    background-color: var(--bg-color); 
+    border-radius: 20px; 
+    box-shadow: var(--nm-shadow-light), var(--nm-shadow-dark); 
+    border: none; 
+    padding: 2rem 2.5rem; animation: fadeIn 0.6s ease-out; margin: 1rem auto;
+}
+#app-container[data-view="home"] #screen-home { display: block; }
+#app-container[data-view="game"] #screen-game { display: block; max-width: 650px; padding: 1rem 1.5rem; } 
+@keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+#screen-home .screen-header { 
+    margin-bottom: 2.5rem; border-bottom: none; padding-bottom: 0; text-align: center;
+}
+#screen-home .screen-header h1 { 
+    font-family: var(--font-family-display); 
+    font-size: 4rem; 
+    font-weight: 700; 
+    color: var(--text-color); 
+    text-shadow: -2px -2px 4px rgba(255, 255, 255, 0.7), 2px 2px 4px rgba(209, 217, 230, 0.5); 
+    html[data-theme="dark"] & {
+        text-shadow: -2px -2px 4px rgba(55, 65, 81, 0.4), 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    margin-bottom: 0.5rem; line-height: 1.1;
+}
+#screen-home .screen-header p {
+    font-size: 1.1rem; 
+    color: var(--text-color-muted); margin-bottom: 0;
+    font-family: var(--font-family-ui); 
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+/* --- [10] شريط دور اللاعب --- */
+#player-turn-bar { 
+    display: grid; 
+    grid-template-columns: 1fr 1.5fr 1fr; 
+    align-items: center; 
+    background-color: var(--bg-color); 
+    border-radius: 12px; 
+    margin-bottom: 2rem; 
+    position: relative; overflow: hidden; 
+    box-shadow: var(--nm-shadow-light-inset), var(--nm-shadow-dark-inset); 
+    padding: 0.5rem; 
+    height: 80px; 
+}
+
+#timer-display { 
+    grid-column: 2 / 3; 
+    display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 600; 
+    padding: 0 0.5rem; color: var(--text-color-muted); 
+    border-right: 1px solid rgba(0,0,0,0.05); 
+    border-left: 1px solid rgba(0,0,0,0.05); 
+}
+ html[data-theme="dark"] #timer-display { border-color: rgba(255,255,255,0.05); }
+
+/* --- [11] لوحة اللعبة (Game Board) --- */
+#game-board { 
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); 
+    gap: 1.5rem; 
+    aspect-ratio: 1 / 1; width: 100%; max-width: 400px; 
+    margin: 0 auto; position: relative;
+}
+
+/* --- [14] الاستجابة للشاشات الصغيرة --- */
+@media (min-width: 769px) { 
+     .screen { max-width: 600px; }
+     #app-container[data-view="game"] #screen-game { max-width: 600px; padding: 1.5rem; } 
+     #game-board { gap: 1.2rem; max-width: 350px; } 
+     #player-turn-bar { height: 70px; }
+}
+
+@media (max-width: 768px) { 
+    html { font-size: 14px; }
+    #app-container { padding: 0.5rem; }
+    .screen { padding: 1.2rem 1.2rem; border-radius: 15px; } 
+    #screen-home .screen-header h1 { font-size: 3rem; }
+    #player-turn-bar { border-radius: 10px; padding: 0.3rem; }
+    #game-board { gap: 1rem; max-width: 90vw;} 
+}
