@@ -30,11 +30,9 @@ function initAudio() {
             playSound(261, 0.1, 0.1, "sawtooth", 0.2);
         };
         sounds.timerTick = () => playSound(440, 0.2, 0.05, "square");
-
     } catch (e) {
-        console.error("Web Audio API not supported.", e);
         state.settings.sounds = false; 
-        updateSoundToggles();
+        if (typeof updateSoundToggles === "function") updateSoundToggles();
     }
 }
 
@@ -54,15 +52,11 @@ function playSound(freq, gain, duration, type = "sine", delay = 0) {
 
 // --- [4] نظام الكونفيتي (Confetti Engine) ---
 function runConfetti() { 
-     if (!confettiCanvas) return; 
+     if (!confettiCanvas || !confettiCtx) return; 
      confettiParticles = []; 
      confettiCanvas.width = window.innerWidth; 
      confettiCanvas.height = window.innerHeight; 
-     const colors = [ 
-        getComputedStyle(document.documentElement).getPropertyValue('--player-x-color'), 
-        getComputedStyle(document.documentElement).getPropertyValue('--player-o-color'), 
-        "#faf089" 
-     ]; 
+     const colors = ["#60a5fa", "#34d399", "#faf089"]; 
      for (let i = 0; i < 200; i++) { 
         confettiParticles.push({ 
             x: Math.random() * confettiCanvas.width, 
@@ -90,9 +84,6 @@ function runConfetti() {
             confettiCtx.rotate(p.angle); 
             confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); 
             confettiCtx.restore(); 
-            if (p.y > confettiCanvas.height) { 
-                p.y = -p.size; p.x = Math.random() * confettiCanvas.width; 
-            } 
         }); 
         requestAnimationFrame(animateConfetti); 
      } 
@@ -102,7 +93,6 @@ function runConfetti() {
 // --- [9] ربط الأحداث (Event Listeners) ---
 function initEventListeners() { 
        startGameBtn.addEventListener("click", startNewMatch); 
-       resumeGameBtn.addEventListener("click", resumeGame); 
        themeToggleHome.addEventListener("click", toggleTheme); 
        soundsToggleHome.addEventListener("click", toggleSounds); 
        instructionsBtnHome.addEventListener("click", () => { initAudio(); if (state.settings.sounds) sounds.click(); toggleModal("modal-instructions"); }); 
@@ -112,26 +102,18 @@ function initEventListeners() {
        newRoundBtn.addEventListener("click", () => { if (state.settings.sounds) sounds.click(); initNewRound(false); }); 
        restartRoundBtn.addEventListener("click", () => { if (state.settings.sounds) sounds.fail(); toggleModal("modal-confirm-restart"); }); 
        endMatchBtn.addEventListener("click", () => { if (state.settings.sounds) sounds.fail(); toggleModal("modal-final-score"); }); 
+       
        answerCorrectBtn.addEventListener("click", () => handleAnswer(true)); 
        answerWrongBtn.addEventListener("click", () => handleAnswer(false)); 
        
-       newMatchBtn.addEventListener("click", endMatchAndStartNew); 
-       
-       if (backToHomeBtn) {
-            backToHomeBtn.addEventListener("click", backToHomeWithSave);
-       }
+       newMatchBtn.addEventListener("click", () => { location.reload(); }); 
+       backToHomeBtn.addEventListener("click", () => { location.reload(); }); 
        
        confirmRestartBtn.addEventListener("click", () => { toggleModal(null); if (state.settings.sounds) sounds.click(); initNewRound(true); }); 
-       modalCloseBtns.forEach(btn => { btn.addEventListener("click", (e) => { const modalId = e.currentTarget.dataset.modal; if (modalId) { toggleModal(null); if (state.settings.sounds) sounds.click(); } }); }); 
-       $$(".modal-overlay").forEach(modal => { modal.addEventListener("click", (e) => { if (e.target === modal) { if (modal.id !== 'modal-answer') { toggleModal(null); if (state.settings.sounds) sounds.click(); } } }); });
        
-       if (inputTeamXHome) inputTeamXHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInput(e, 'X', true, false); });
-       if (inputTeamXHome) inputTeamXHome.addEventListener('blur', (e) => window.handleChipInput(e, 'X', true, false));
-       if (inputTeamOHome) inputTeamOHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInput(e, 'O', true, false); });
-       if (inputTeamOHome) inputTeamOHome.addEventListener('blur', (e) => window.handleChipInput(e, 'O', true, false));
-
-       if (inputCatsHome) inputCatsHome.addEventListener('keydown', (e) => { if(e.key === 'Enter') window.handleChipInputCategories(false, e); });
-       if (inputCatsHome) inputCatsHome.addEventListener('blur', (e) => window.handleChipInputCategories(false, e));
+       modalCloseBtns.forEach(btn => { 
+           btn.addEventListener("click", () => { toggleModal(null); if (state.settings.sounds) sounds.click(); }); 
+       });
 }
 
 // --- [10] بدء تشغيل اللعبة ---
@@ -140,26 +122,21 @@ function initializeGame() {
         resumeGameBtn.style.display = "inline-flex"; 
         playerNameXInput.value = state.settings.playerNames.X; 
         playerNameOInput.value = state.settings.playerNames.O; 
-        
         timerSelectHome.value = state.settings.secs; 
         roundsSelectHome.value = state.match.totalRounds || 3;
         
-        document.getElementById('mode-team-home').classList.toggle('active', state.settings.playMode === 'team');
-        document.getElementById('mode-individual-home').classList.toggle('active', state.settings.playMode === 'individual');
-
-        updatePlayerInputLabels(state.settings.playMode);
-        
-        renderChips('X'); 
-        renderChips('O'); 
-        renderChipsCategories(); 
-        
+        if (typeof updatePlayerInputLabels === "function") updatePlayerInputLabels(state.settings.playMode);
+        if (typeof renderChips === "function") { renderChips('X'); renderChips('O'); }
+        if (typeof renderChipsCategories === "function") renderChipsCategories(); 
     } else {
-        document.getElementById('mode-team-home').classList.add('active'); 
-        updatePlayerInputLabels(DEFAULT_STATE.settings.playMode);
-        renderChipsCategories(); 
+        if (typeof updatePlayerInputLabels === "function") updatePlayerInputLabels(DEFAULT_STATE.settings.playMode);
     }
     
-    applyTheme(); updateSoundToggles(); updatePlayerTags(); initEventListeners();
+    if (typeof applyTheme === "function") applyTheme(); 
+    if (typeof updateSoundToggles === "function") updateSoundToggles(); 
+    if (typeof updatePlayerTags === "function") updatePlayerTags(); 
+    initEventListeners();
 }
 
+// نقطة الانطلاق
 initializeGame();
