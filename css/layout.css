@@ -21,7 +21,7 @@ body::before {
 html[data-theme="dark"] body::before { opacity: 0.4; }
 @keyframes noiseAnim { 0% { transform: translate(0,0); } 10% { transform: translate(-5%,-5%); } 20% { transform: translate(-10%,5%); } 30% { transform: translate(5%,-10%); } 40% { transform: translate(-5%,15%); } 50% { transform: translate(-10%,5%); } 60% { transform: translate(15%,0); } 70% { transform: translate(0,10%); } 80% { transform: translate(-15%,0); } 90% { transform: translate(10%,5%); } 100% { transform: translate(5%,0); } }
 
-/* خلفية Pattern */
+/* خلفية Ghost Grid Pattern */
 body::after {
     content: "";
     position: fixed;
@@ -39,6 +39,7 @@ body::after {
         linear-gradient(to bottom, var(--bg-pattern-color), transparent);
     background-repeat: repeat;
     background-size: 500px 500px;
+    background-position: var(--bg-position-x, 0%) var(--bg-position-y, 0%);
     animation: patternMovement 100s linear infinite alternate;
 }
 
@@ -73,22 +74,12 @@ p { margin-bottom: 1rem; color: var(--text-color-muted); }
     background-color: var(--bg-color); 
     border-radius: 20px; 
     box-shadow: var(--nm-shadow-light), var(--nm-shadow-dark); 
+    border: none; 
     padding: 2rem 2.5rem; animation: fadeIn 0.6s ease-out; margin: 1rem auto;
 }
 #app-container[data-view="home"] #screen-home { display: block; }
 #app-container[data-view="game"] #screen-game { display: block; max-width: 650px; padding: 1rem 1.5rem; } 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-
-#screen-home .screen-header { 
-    margin-bottom: 2.5rem; text-align: center;
-}
-#screen-home .screen-header h1 { 
-    font-size: 4rem; 
-    font-weight: 700; 
-    color: var(--text-color); 
-    text-shadow: -2px -2px 4px rgba(255, 255, 255, 0.7), 2px 2px 4px rgba(209, 217, 230, 0.5); 
-    margin-bottom: 0.5rem; line-height: 1.1;
-}
 
 /* --- [10] شريط دور اللاعب --- */
 #player-turn-bar { 
@@ -98,16 +89,10 @@ p { margin-bottom: 1rem; color: var(--text-color-muted); }
     background-color: var(--bg-color); 
     border-radius: 12px; 
     margin-bottom: 2rem; 
+    position: relative; overflow: hidden; 
     box-shadow: var(--nm-shadow-light-inset), var(--nm-shadow-dark-inset); 
     padding: 0.5rem; 
     height: 80px; 
-}
-
-#timer-display { 
-    grid-column: 2 / 3; 
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    border-right: 1px solid rgba(0,0,0,0.05); 
-    border-left: 1px solid rgba(0,0,0,0.05); 
 }
 
 /* --- [11] لوحة اللعبة (Game Board) --- */
@@ -115,19 +100,5 @@ p { margin-bottom: 1rem; color: var(--text-color-muted); }
     display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); 
     gap: 1.5rem; 
     aspect-ratio: 1 / 1; width: 100%; max-width: 400px; 
-    margin: 0 auto;
-}
-
-/* --- [14] الاستجابة للشاشات الصغيرة --- */
-@media (min-width: 769px) { 
-     .screen { max-width: 600px; }
-     #app-container[data-view="game"] #screen-game { max-width: 600px; } 
-     #game-board { max-width: 350px; } 
-}
-
-@media (max-width: 768px) { 
-    html { font-size: 14px; }
-    .screen { padding: 1.2rem; } 
-    #screen-home .screen-header h1 { font-size: 3rem; }
-    #game-board { max-width: 90vw;} 
+    margin: 0 auto; position: relative;
 }
