@@ -1,4 +1,4 @@
-// --- [5] إدارة الحالة والواجهة (UI Management) ---
+// --- [5] إدارة الحالة والواجهة (State & UI Management) ---
 
 function switchView(viewName) { 
     appContainer.setAttribute("data-view", viewName); 
@@ -39,9 +39,8 @@ function updatePlayerInputLabels(mode) {
     renderChips('O'); 
 }
 
-// ربط الدالة بـ window لتعمل من الـ HTML (onclick)
 window.togglePlayMode = function(isModal_ignored, specificMode = null) {
-    if (typeof initAudio === "function") initAudio(); 
+    initAudio(); 
 
     const teamBtn = document.getElementById('mode-team-home');
     const individualBtn = document.getElementById('mode-individual-home');
@@ -61,7 +60,7 @@ window.togglePlayMode = function(isModal_ignored, specificMode = null) {
 
     updatePlayerInputLabels(newMode); 
     saveStateToLocalStorage();
-    if (state.settings.sounds && typeof sounds.click === "function") sounds.click();
+    if (state.settings.sounds) sounds.click();
 }
 
 function applyTheme() { 
@@ -82,11 +81,11 @@ function applyTheme() {
 }
 
 function toggleTheme() { 
-    if (typeof initAudio === "function") initAudio(); 
+    initAudio(); 
     state.settings.theme = state.settings.theme === "light" ? "dark" : "light"; 
     applyTheme(); 
     saveStateToLocalStorage(); 
-    if (typeof sounds.click === "function") sounds.click();
+    sounds.click();
 }
 
 function updateSoundToggles() { 
@@ -99,10 +98,11 @@ function updateSoundToggles() {
 }
 
 function toggleSounds() { 
-    if (typeof initAudio === "function") initAudio(); 
+    initAudio(); 
     state.settings.sounds = !state.settings.sounds; 
     updateSoundToggles(); 
-    if (state.settings.sounds && typeof sounds.success === "function") {
+    if (state.settings.sounds) { 
+        initAudio(); 
         sounds.success(); 
     } 
     saveStateToLocalStorage();
@@ -157,5 +157,5 @@ function updateTurnUI() {
     playerTagX.classList.toggle("active", currentPlayer === "X"); 
     playerTagO.classList.toggle("active", currentPlayer === "O"); 
     updateTeamMemberDisplay();
-    if (typeof renderBoardAvailability === "function") renderBoardAvailability(currentPlayer);
+    renderBoardAvailability(currentPlayer);
 }
