@@ -11,17 +11,15 @@ const inputTeamXHome = $("#input-team-x-home");
 const inputTeamOHome = $("#input-team-o-home");
 const chipContainerXHome = $("#chip-container-x-home");
 const chipContainerOHome = $("#chip-container-o-home");
-
 const modeBtnTeamHome = $("#mode-team-home");
 const modeBtnIndividualHome = $("#mode-individual-home");
 const timerSelectHome = $("#settings-timer-home"); 
 const roundsSelectHome = $("#settings-rounds-home");
 const inputCatsHome = $("#input-cats-home");
 const chipContainerCatsHome = $("#chip-container-cats-home");
-
 const soundsToggleHome = $("#toggle-sounds-home");
 const themeToggleHome = $("#toggle-theme-home"); 
-const themeToggleTextHome = $("#toggle-theme-text-home");
+const themeToggleTextHome = $("#theme-toggle-text-home");
 const startGameBtn = $("#start-game-btn"); 
 const resumeGameBtn = $("#resume-game-btn");
 const instructionsBtnHome = $("#open-instructions-home-btn"); 
@@ -47,7 +45,6 @@ const answerTimerBar = $("#answer-timer-bar");
 const answerTurnHint = $("#answer-turn-hint"); 
 const answerCorrectBtn = $("#answer-correct-btn");
 const answerWrongBtn = $("#answer-wrong-btn"); 
-
 const finalWinnerText = $("#final-winner-text");
 const finalWinsX = $("#final-wins-x");
 const finalWinsO = $("#final-wins-o");
@@ -57,7 +54,7 @@ const modalConfirmRestart = $("#modal-confirm-restart");
 const confirmRestartBtn = $("#confirm-restart-btn");
 const modalCloseBtns = $$(".modal-close-btn"); 
 const confettiCanvas = $("#confetti-canvas");
-const confettiCtx = (confettiCanvas ? confettiCanvas.getContext("2d") : null); 
+const confettiCtx = confettiCanvas.getContext("2d"); 
 let confettiParticles = [];
 const roundWinnerMessage = $("#round-winner-message");
 const playerXMemberDisplay = $("#player-x-member");
@@ -92,19 +89,23 @@ const DEFAULT_STATE = {
 };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE)); 
 
-// --- [8] الحفظ والاستئناف ---
+// --- [8] الحفظ والاستئناف (Persistence) ---
 function saveStateToLocalStorage() { 
     const stateToSave = JSON.parse(JSON.stringify(state)); 
     stateToSave.timer = DEFAULT_STATE.timer; 
     stateToSave.roundState.activeCell = null; 
     stateToSave.roundState.phase = null; 
+    stateToSave.roundState.teamMemberIndex = state.roundState.teamMemberIndex;
     
     if (state.match.usedCombinations) {
         stateToSave.match.usedCombinations = Array.from(state.match.usedCombinations);
+    } else {
+        stateToSave.match.usedCombinations = [];
     }
     
     stateToSave.roundState.board.forEach(cell => { 
         if (cell.tried instanceof Set) { cell.tried = Array.from(cell.tried); } 
+        else { cell.tried = []; } 
     }); 
     localStorage.setItem("ticTacCategoriesGameState", JSON.stringify(stateToSave));
 }
@@ -115,12 +116,17 @@ function loadStateFromLocalStorage() {
         try { 
             const loadedState = JSON.parse(savedState); 
             const mergedState = JSON.parse(JSON.stringify(DEFAULT_STATE)); 
+            mergedState.settings.playMode = loadedState.settings.playMode || DEFAULT_STATE.settings.playMode;
+            mergedState.settings.teamMembers = loadedState.settings.teamMembers || DEFAULT_STATE.settings.teamMembers;
             Object.assign(mergedState.settings, loadedState.settings); 
             Object.assign(mergedState.match, loadedState.match); 
             Object.assign(mergedState.roundState, loadedState.roundState); 
-            
+            mergedState.match.usedCombinations = loadedState.match.usedCombinations || [];
             mergedState.roundState.board.forEach(cell => { cell.tried = new Set(cell.tried || []); }); 
-            state = mergedState; return true; 
+            mergedState.roundState.teamMemberIndex = loadedState.roundState.teamMemberIndex || DEFAULT_STATE.roundState.teamMemberIndex; 
+            if (!mergedState.match.totalScore) { mergedState.match.totalScore = { X: 0, O: 0 }; } 
+            state = mergedState; 
+            return true; 
         } catch (e) { 
             localStorage.removeItem("ticTacCategoriesGameState"); 
             return false; 
